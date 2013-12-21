@@ -65,6 +65,7 @@ APPLICATION = \
 	app/views/chooselanguage.js \
 	app/views/file.js \
 	app/views/files.js \
+	app/views/fork-repo.js \
 	app/views/header.js \
 	app/views/loader.js \
 	app/views/metadata.js \

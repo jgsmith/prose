@@ -18,6 +18,7 @@ var ReposView = require('./views/repos');
 var RepoView = require('./views/repo');
 var FileView = require('./views/file');
 var DocumentationView = require('./views/documentation');
+var ForkRepoView = require('./views/fork-repo');
 var ChooseLanguageView = require('./views/chooselanguage');
 
 var templates = require('../dist/templates');
@@ -28,6 +29,8 @@ module.exports = Backbone.Router.extend({
   routes: {
     'about(/)': 'about',
     'chooselanguage(/)': 'chooseLanguage',
+    'fork(/)': 'fork',
+    '_/*path(/)': 'starpath',
     ':user(/)': 'profile',
     ':user/:repo(/)': 'repo',
     ':user/:repo/*path(/)': 'path',
@@ -78,6 +81,18 @@ module.exports = Backbone.Router.extend({
     this.app.loader.done();
   },
 
+  fork: function() {
+    if (this.view) this.view.remove();
+
+    this.app.loader.start(t('loading.file'));
+    this.app.nav.mode('');
+
+    this.view = new ForkRepoView();
+    this.app.$el.find('#main').html(this.view.render().el);
+
+    this.app.loader.done();
+  },
+
   // #example-user
   // #example-organization
   profile: function(login) {
@@ -119,7 +134,17 @@ module.exports = Backbone.Router.extend({
         this.app.$el.find('#main').html(this.view.render().el);
 
         model.repos.fetch({
-          success: repos.render,
+          success: function() {
+            var repo = user.repos.findWhere({ name: "dhdata-site" });
+            if (_.isUndefined(repo)) {
+
+              router.navigate("#fork", { trigger: true, replace: true });
+              /* repos.render(); */
+            }
+            else {
+              router.navigate("#" + login + "/dhdata-site", { trigger: true, replace: true });
+            }
+          },
           error: (function(model, xhr, options) {
             this.error(xhr);
           }).bind(this),
@@ -207,6 +232,22 @@ module.exports = Backbone.Router.extend({
         break;
       default:
         throw url.mode;
+    }
+  },
+
+  starpath: function(path) {
+    /* var url = util.extractURL(path); */
+    if (this.user) {
+      router.navigate(this.user.get('login') + "/dhdata-site/" + path, {
+        trigger: true,
+        replace: true
+      });
+    } else {
+      this.app.nav.mode('start');
+      this.view = new StartView();
+      this.app.$el.find('#main').html(this.view.render().el);
+      this._next_path = path;
+      this.app.loader.done();
     }
   },
 
@@ -330,14 +371,24 @@ module.exports = Backbone.Router.extend({
 
     // If user has authenticated
     if (this.user) {
-      router.navigate(this.user.get('login'), {
-        trigger: true,
-        replace: true
-      });
+      if(this._next_path) {
+        router.navigate(this.user.get('login') + "/dhdata-site/" + this._next_path, {
+          trigger: true,
+          replace: true
+        });
+        delete this._next_path;
+      }
+      else {
+        router.navigate(this.user.get('login'), {
+          trigger: true,
+          replace: true
+        });
+      }
     } else {
       this.app.nav.mode('start');
       this.view = new StartView();
       this.app.$el.find('#main').html(this.view.render().el);
+      this.app.loader.done();
     }
   },
 
@@ -365,7 +416,7 @@ module.exports = Backbone.Router.extend({
     var options = [
       {
         'title': t('notification.home'),
-        'link': '/'
+        'link': '/editor'
       }
     ];
 

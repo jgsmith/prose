@@ -190,17 +190,35 @@ module.exports = Backbone.Collection.extend({
       success: (function(model, res, options) {
         var config = this.findWhere({ path: '_prose.yml' }) ||
           this.findWhere({ path: '_config.yml' });
-
+        var _this = this;
         if (config) {
           config.fetch({
             success: (function() {
-              this.parseConfig(config, { success: success, args: args });
+              this.parseConfig(config, { 
+                args: args, 
+                success: function() {
+                  var counter = 0;
+                  _.each(_this.models, function(file) {
+                    if(/\/_template\.md$/.test(file.get("path"))) {
+                      counter += 1;
+                      file.fetch({
+                        success: function() {
+                          counter -= 1;
+                          if(counter < 1) {
+                            if(success) { success(); success = null; }
+                          }
+                        }
+                      });
+                    }
+                  });
+                  if(counter < 1 && success) { success(); }
+                }
+              });
             }).bind(this)
           });
         } else {
           if (_.isFunction(success)) success.apply(this, args);
         }
-
       }).bind(this)
     }));
   },

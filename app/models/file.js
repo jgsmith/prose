@@ -15,8 +15,11 @@ module.exports = Backbone.Model.extend({
       return !!options.clone;
     };
 
-    this.placeholder = new Date().format('Y-m-d') + '-your-filename.md';
+    /* if this directory has a filename template, use that */
+    /* otherwise, use the default template */
+    this.placeholder = 'your-filename.md';
     var path = attributes.path.split('?')[0];
+    var template_path;
 
     // Append placeholder name if file is new and
     // path is an empty string, matches _drafts
@@ -24,6 +27,7 @@ module.exports = Backbone.Model.extend({
     var dir = attributes.collection.get(path);
     if (this.isNew() && (!path || path === '_drafts' ||
       (dir && dir.get('type') === 'tree'))) {
+      template_path = path ? path + '/' + '_template.md' : '_template.md';
       path = path ? path + '/' + this.placeholder : this.placeholder;
     }
 
@@ -40,9 +44,32 @@ module.exports = Backbone.Model.extend({
       type = attributes.type;
     }
 
+    var file_content;
+
+    if(this.isNew() && _.isUndefined(attributes.content)) {
+      /* if we have a template for this directory, then use that content */
+      var template_file;
+      if(template_path) {
+        template_file = this.collection.get(template_path);
+        if(template_file) {
+          file_content = template_file.get('content');
+        }
+        else {
+          file_content = t('main.new.body');
+        }
+      }
+      else {
+        /* otherwise, use the default main.new.body content */
+        file_content = t('main.new.body');
+      }
+    }
+    else {
+      file_content = attributes.content;
+    }
+
     this.set({
       'binary': util.isBinary(path),
-      'content': this.isNew() && _.isUndefined(attributes.content) ? t('main.new.body') : attributes.content,
+      'content': file_content,
       'content_url': attributes.url,
       'draft': function() {
         var path = this.get('path');
